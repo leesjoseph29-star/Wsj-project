@@ -144,7 +144,7 @@ canvas { height:300px !important; }
 <h2>Add New Order</h2>
 <input type="text" id="newName" placeholder="Order Name">
 <input type="number" id="newBadges" placeholder="Number of Badges">
-<input type="number" step="0.01" id="newExtra" placeholder="Additional Payment (£)">
+<input type="number" step="0.10" id="newExtra" placeholder="Additional Payment (£)">
 <button onclick="addOrder()">Add Order</button>
 </div>
 
@@ -231,7 +231,7 @@ updateChart();
 
 function addOrder(){
 const name=document.getElementById("newName").value;
-const badges=parseInt(document.getElementById("newBadges").value);
+const badges=parseInt(document.getElementById("newBadges").value)||0:
 const extra=parseFloat(document.getElementById("newExtra").value)||0;
 
 if(!name||!badges) return alert("Enter name and badge amount.");
@@ -268,12 +268,11 @@ const order=orders.find(o=>o.code===code);
 order[field]=value;
 saveData();
 }
-
 function deleteOrder(code){
 const order=orders.find(o=>o.code===code);
 if(!order) return;
 
-const confirmDelete = confirm(`Are you sure you want to delete order "${order.name}"?`);
+const confirmDelete = confirm(`Are you sure you want to delete order "${order.code}"?`);
 if(!confirmDelete) return;
 
 orders = orders.filter(o=>o.code!==code);
