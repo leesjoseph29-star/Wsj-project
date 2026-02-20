@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Manager Hub</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        margin: 20px;
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    .top-bar {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    input, select, button {
+        padding: 8px;
+        margin: 5px;
+        font-size: 14px;
+    }
+
+    button {
+        cursor: pointer;
+        background: #4a6cf7;
+        color: white;
+        border: none;
+        border-radius: 4px;
+    }
+
+    button:hover {
+        background: #3a55c4;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+
+    th, td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: center;
+    }
+
+    th {
+        background: #4a6cf7;
+        color: white;
+    }
+
+    .totals {
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+
+    .form-section {
+        background: white;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 6px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Business Order Hub</h1>
+
+<div class="totals">
+    Total Orders: <span id="totalOrders">0</span> |
+    Total Revenue: £<span id="totalRevenue">0.00</span>
+</div>
+
+<div class="top-bar">
+    <input type="text" id="searchInput" placeholder="Search by order name...">
+    
+    <select id="statusFilter">
+        <option value="all">All Statuses</option>
+        <option value="paid">Paid</option>
+        <option value="unpaid">Unpaid</option>
+        <option value="completed">Completed</option>
+    </select>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Badges</th>
+            <th>Extra (£)</th>
+            <th>Total (£)</th>
+            <th>Paid</th>
+            <th>Collection Date</th>
+            <th>Completion Date</th>
+        </tr>
+    </thead>
+    <tbody id="orderTable"></tbody>
+</table>
+
+<div class="form-section">
+    <h3>Add New Order</h3>
+    <input type="text" id="newName" placeholder="Order Name">
+    <input type="number" id="newBadges" placeholder="Number of Badges">
+    <input type="number" step="0.01" id="newExtra" placeholder="Additional Payment (£)">
+    <button onclick="addOrder()">Add Order</button>
+</div>
+
+<script>
+let orders = [];
+
+function generateCode() {
+    return "ORD-" + Matho(10000 + Math.floor(Math.random() * 90000));
+}
+
+function calculateTotal(badges, extra) {
+    return (badges * 0.5) + extra;
+}
+
+function updateTotals() {
+    let totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    document.getElementById("totalOrders").innerText = orders.length;
+    document.getElementById("totalRevenue").innerText = totalRevenue.toFixed(2);
+}
+
+function renderOrders() {
+    const table = document.getElementById("orderTable");
+    table.innerHTML = "";
+
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const filter = document.getElementById("statusFilter").value;
+
+    orders.forEach(order => {
+        let show = true;
+
+        if (!order.name.toLowerCase().includes(search)) show = false;
+
+        if (filter === "paid" && !order.paid) show = false;
+        if (filter === "unpaid" && order.paid) show = false;
+        if (filter === "completed" && !order.completionDate) show = false;
+
+        if (show) {
+            const row = `
+                <tr>
+                    <td>${order.code}</td>
+                    <td>${order.name}</td>
+                    <td>${order.badges}</td>
+                    <td>£${order.extra.toFixed(2)}</td>
+                    <td>£${order.total.toFixed(2)}</td>
+                    <td>
+                        <input type="checkbox" ${order.paid ? "checked" : ""}
+                        onchange="togglePaid('${order.code}')">
+                    </td>
+                    <td>
+                        <input type="date" value="${order.collectionDate || ''}"
+                        onchange="updateDate('${order.code}', 'collectionDate', this.value)">
+                    </td>
+                    <td>
+                        <input type="date" value="${order.completionDate || ''}"
+                        onchange="updateDate('${order.code}', 'completionDate', this.value)">
+                    </td>
+                </tr>
+            `;
+            table.innerHTML += row;
+        }
+    });
+
+    updateTotals();
+}
+
+function addOrder() {
+    const name = document.getElementById("newName").value;
+    const badges = parseInt(document.getElementById("newBadges").value);
+    const extra = parseFloat(document.getElementById("newExtra").value) || 0;
+
+    if (!name || !badges) {
+        alert("Please enter a name and badge amount.");
+        return;
+    }
+
+    const total = calculateTotal(badges, extra);
+
+    const order = {
+        code: generateCode(),
+        name,
+        badges,
+        extra,
+        total,
+        paid: false,
+        collectionDate: "",
+        completionDate: ""
+    };
+
+    orders.push(order);
+
+    document.getElementById("newName").value = "";
+    document.getElementById("newBadges").value = "";
+    document.getElementById("newExtra").value = "";
+
+    renderOrders();
+}
+
+function togglePaid(code) {
+    const order = orders.find(o => o.code === code);
+    order.paid = !order.paid;
+    renderOrders();
+}
+
+function updateDate(code, field, value) {
+    const order = orders.find(o => o.code === code);
+    order[field] = value;
+    renderOrders();
+}
+
+document.getElementById("searchInput").addEventListener("input", renderOrders);
+document.getElementById("statusFilter").addEventListener("change", renderOrders);
+
+updateTotals();
+</script>
+
+</body>
+</html>
