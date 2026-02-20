@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order & Donation Management System</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -96,17 +95,21 @@
         
         tr.donation-row { background-color: #f0fdf4; }
 
-        /* Wide & Short Line Chart */
-        .chart-container { 
-            background: var(--card-bg); 
-            padding: 15px; 
-            border-radius: 10px; 
-            border: 1px solid var(--border); 
-            width: 100%; /* Stretches to full screen width */
-            box-sizing: border-box;
+        /* Monthly Summary Table Styling */
+        .summary-container {
+            max-width: 400px; /* Kept small as requested */
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            overflow: hidden;
         }
-        .chart-container h2 { font-size: 14px; margin-top: 0; margin-bottom: 10px; color: var(--text-muted); }
-        .canvas-holder { height: 120px; position: relative; width: 100%; } /* Very short height */
+        .summary-header {
+            padding: 12px 15px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -177,17 +180,24 @@
     </table>
 </div>
 
-<div class="chart-container">
-    <h2>Monthly Revenue Trend (Completed)</h2>
-    <div class="canvas-holder">
-        <canvas id="revenueChart"></canvas>
-    </div>
+<div class="summary-container">
+    <div class="summary-header">Monthly Payment Summary</div>
+    <table id="monthlySummaryTable">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Payment Received</th>
+            </tr>
+        </thead>
+        <tbody id="summaryBody">
+            </tbody>
+    </table>
 </div>
 
 <script>
 const goal = 4000;
 const badgeRate = 0.50;
-const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthLongNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 let entries = JSON.parse(localStorage.getItem("business_ledger")) || [];
 
 function saveData() { localStorage.setItem("business_ledger", JSON.stringify(entries)); }
@@ -195,27 +205,9 @@ function saveData() { localStorage.setItem("business_ledger", JSON.stringify(ent
 function toggleEntryType() {
     const type = document.getElementById("entryType").value;
     const badgeInput = document.getElementById("newBadges");
-    if (type === "donation") {
-        badgeInput.value = 0;
-        badgeInput.disabled = true;
-        badgeInput.style.backgroundColor = "#f1f5f9";
-    } else {
-        badgeInput.disabled = false;
-        badgeInput.style.backgroundColor = "white";
-    }
-}
-
-function calculateMonthlyTotals() {
-    let totals = {};
-    monthNames.forEach(m => totals[m] = 0);
-    entries.forEach(e => {
-        if (e.completionDate) {
-            const date = new Date(e.completionDate);
-            const month = monthNames[date.getMonth()];
-            totals[month] += e.total;
-        }
-    });
-    return totals;
+    badgeInput.disabled = (type === "donation");
+    badgeInput.style.backgroundColor = (type === "donation") ? "#f1f5f9" : "white";
+    if(type === "donation") badgeInput.value = 0;
 }
 
 function updateDashboard() {
@@ -262,7 +254,39 @@ function renderEntries() {
         }
     });
     updateDashboard();
-    updateChart();
+    renderSummary();
+}
+
+function renderSummary() {
+    const summaryBody = document.getElementById("summaryBody");
+    summaryBody.innerHTML = "";
+    
+    let monthlyMap = {};
+
+    // Only process entries that have a completion date
+    entries.forEach(e => {
+        if (e.completionDate) {
+            const dateObj = new Date(e.completionDate);
+            const label = `${monthLongNames[dateObj.getMonth()]}-${dateObj.getFullYear()}`;
+            monthlyMap[label] = (monthlyMap[label] || 0) + e.total;
+        }
+    });
+
+    const sortedMonths = Object.keys(monthlyMap);
+    
+    if (sortedMonths.length === 0) {
+        summaryBody.innerHTML = "<tr><td colspan='2' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
+        return;
+    }
+
+    sortedMonths.forEach(month => {
+        summaryBody.innerHTML += `
+            <tr>
+                <td>${month}</td>
+                <td><strong>£${monthlyMap[month].toFixed(2)}</strong></td>
+            </tr>
+        `;
+    });
 }
 
 function addEntry() {
@@ -283,42 +307,9 @@ function addEntry() {
     document.getElementById("newExtra").value = "";
 }
 
-function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); updateDashboard(); }
+function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); updateDashboard(); renderSummary(); }
 function updateDate(index, value) { entries[index].completionDate = value; saveData(); renderEntries(); }
 function deleteEntry(index) { if(confirm("Delete?")) { entries.splice(index, 1); saveData(); renderEntries(); } }
-
-// Wide & Short Line Chart Initialization
-const ctx = document.getElementById("revenueChart").getContext("2d");
-let revenueChart = new Chart(ctx, {
-    type: 'line', 
-    data: { 
-        labels: monthNames, 
-        datasets: [{ 
-            label: 'Revenue (£)', 
-            data: [], 
-            borderColor: '#2563eb', 
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            fill: true,
-            tension: 0.4, 
-            pointRadius: 3
-        }] 
-    },
-    options: { 
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { 
-            y: { beginAtZero: true, ticks: { font: { size: 10 } } }, 
-            x: { grid: { display: false }, ticks: { font: { size: 10 } } } 
-        }
-    }
-});
-
-function updateChart() {
-    const totals = calculateMonthlyTotals();
-    revenueChart.data.datasets[0].data = monthNames.map(m => totals[m]);
-    revenueChart.update();
-}
 
 function exportToExcel() {
     if(entries.length === 0) return;
