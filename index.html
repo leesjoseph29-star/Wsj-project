@@ -15,6 +15,7 @@
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border: #e2e8f0;
+            --accent: #7c3aed;
         }
 
         body { 
@@ -30,7 +31,7 @@
 
         .dashboard { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
             gap: 15px; 
             margin-bottom: 24px; 
         }
@@ -59,7 +60,7 @@
 
         .panel h2 { font-size: 14px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 
-        .input-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .input-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
         input, select, button { 
             padding: 8px 12px; 
@@ -78,7 +79,6 @@
         }
 
         .btn-outline { background: white; color: var(--text-main); border: 1px solid var(--border); }
-
         .delete-btn { background: #fee2e2; color: #b91c1c; border: none; padding: 4px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; }
 
         .table-wrapper { 
@@ -131,18 +131,27 @@
         <p id="totalBadges">0</p>
     </div>
     <div class="card" style="border-left: 4px solid var(--primary);">
-        <h3>Total Labor Time</h3>
+        <h3>Total Labor</h3>
         <p id="totalTime">0h 0m</p>
     </div>
+    <div class="card" style="border-left: 4px solid var(--accent);">
+        <h3>Hourly Rate</h3>
+        <p>£<span id="hourlyRate">0.00</span></p>
+    </div>
     <div class="card">
-        <h3>Goal (£4,000)</h3>
+        <h3>Goal (£4k)</h3>
         <p><span id="percentage">0</span>%</p>
         <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
     </div>
 </div>
 
 <div class="panel">
-    <h2>Add New Entry</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 15px; padding-bottom: 8px;">
+        <h2 style="margin:0; border:none;">Add New Entry</h2>
+        <div style="font-size: 12px; color: var(--text-muted);">
+            Mins per badge: <input type="number" id="globalMins" value="10" style="width: 40px; padding: 2px 5px;" onchange="updateMinsPerBadge(this.value)">
+        </div>
+    </div>
     <div class="input-group">
         <select id="entryType" onchange="toggleEntryType()">
             <option value="order">Standard Order</option>
@@ -167,8 +176,9 @@
                 <th>Type</th>
                 <th>Name</th>
                 <th>Badges</th>
-                <th>Time</th> <th>Badge Cost</th>
-                <th>Add. Payment</th>
+                <th>Est. Time</th>
+                <th>Cost</th>
+                <th>Add. Pay</th>
                 <th>Total (£)</th>
                 <th>Paid</th>
                 <th>Completion</th>
@@ -195,11 +205,23 @@
 <script>
 const goal = 4000;
 const badgeRate = 0.50;
-const minsPerBadge = 10; // Global setting for 10 mins per badge
 const monthLongNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-let entries = JSON.parse(localStorage.getItem("business_ledger")) || [];
 
-function saveData() { localStorage.setItem("business_ledger", JSON.stringify(entries)); }
+// Persistent State
+let entries = JSON.parse(localStorage.getItem("business_ledger")) || [];
+let minsPerBadge = parseInt(localStorage.getItem("mins_per_badge")) || 10;
+document.getElementById("globalMins").value = minsPerBadge;
+
+function saveData() { 
+    localStorage.setItem("business_ledger", JSON.stringify(entries)); 
+    localStorage.setItem("mins_per_badge", minsPerBadge);
+}
+
+function updateMinsPerBadge(val) {
+    minsPerBadge = parseInt(val) || 1;
+    saveData();
+    renderEntries();
+}
 
 function toggleEntryType() {
     const type = document.getElementById("entryType").value;
@@ -212,23 +234,27 @@ function toggleEntryType() {
 function updateDashboard() {
     const totalRev = entries.reduce((s, e) => s + e.total, 0);
     const totalPaid = entries.filter(e => e.paid).reduce((s, e) => s + e.total, 0);
-    const unpaidRev = totalRev - totalPaid;
-
+    
     const completedEntries = entries.filter(e => e.completionDate);
     const compRev = completedEntries.reduce((s, e) => s + e.total, 0);
     const totalBadges = completedEntries.reduce((s, e) => s + (parseInt(e.badges) || 0), 0);
     
     // Time Calculation
     const totalMinutes = entries.reduce((s, e) => s + ((parseInt(e.badges) || 0) * minsPerBadge), 0);
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
+    const hoursTotal = totalMinutes / 60;
+    const hoursDisplay = Math.floor(totalMinutes / 60);
+    const minsDisplay = totalMinutes % 60;
+
+    // Hourly Rate Calculation
+    const rate = hoursTotal > 0 ? (totalRev / hoursTotal) : 0;
 
     const percent = Math.min((compRev / goal) * 100, 100);
 
     document.getElementById("totalRevenue").innerText = totalRev.toFixed(2);
     document.getElementById("totalPaid").innerText = totalPaid.toFixed(2);
     document.getElementById("totalBadges").innerText = totalBadges;
-    document.getElementById("totalTime").innerText = `${hours}h ${mins}m`;
+    document.getElementById("totalTime").innerText = `${hoursDisplay}h ${minsDisplay}m`;
+    document.getElementById("hourlyRate").innerText = rate.toFixed(2);
     document.getElementById("percentage").innerText = percent.toFixed(1);
     document.getElementById("progressBar").style.width = percent + "%";
 }
@@ -283,12 +309,7 @@ function renderSummary() {
     }
 
     sortedMonths.forEach(month => {
-        summaryBody.innerHTML += `
-            <tr>
-                <td>${month}</td>
-                <td><strong>£${monthlyMap[month].toFixed(2)}</strong></td>
-            </tr>
-        `;
+        summaryBody.innerHTML += `<tr><td>${month}</td><td><strong>£${monthlyMap[month].toFixed(2)}</strong></td></tr>`;
     });
 }
 
