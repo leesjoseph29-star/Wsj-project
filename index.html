@@ -96,7 +96,7 @@
         tr.donation-row { background-color: #f0fdf4; }
 
         .summary-container {
-            max-width: 400px; 
+            max-width: 600px; 
             background: var(--card-bg);
             border-radius: 10px;
             border: 1px solid var(--border);
@@ -190,12 +190,14 @@
 </div>
 
 <div class="summary-container">
-    <div class="summary-header">Monthly Payment Summary</div>
+    <div class="summary-header">Monthly Financial Breakdown</div>
     <table id="monthlySummaryTable">
         <thead>
             <tr>
                 <th>Month</th>
-                <th>Payment Received</th>
+                <th>Total (£)</th>
+                <th>Sales (£)</th>
+                <th>Donations (£)</th>
             </tr>
         </thead>
         <tbody id="summaryBody"></tbody>
@@ -297,19 +299,41 @@ function renderSummary() {
     entries.forEach(e => {
         if (e.completionDate) {
             const dateObj = new Date(e.completionDate);
-            const label = `${monthLongNames[dateObj.getMonth()]}-${dateObj.getFullYear()}`;
-            monthlyMap[label] = (monthlyMap[label] || 0) + e.total;
+            // Key for chronological sorting: YYYY-MM
+            const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+            const label = `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+            
+            if (!monthlyMap[key]) {
+                monthlyMap[key] = { label: label, total: 0, sales: 0, donations: 0 };
+            }
+
+            const amount = e.total;
+            monthlyMap[key].total += amount;
+            
+            if (e.type === 'donation') {
+                monthlyMap[key].donations += amount;
+            } else {
+                monthlyMap[key].sales += amount;
+            }
         }
     });
 
-    const sortedMonths = Object.keys(monthlyMap);
-    if (sortedMonths.length === 0) {
-        summaryBody.innerHTML = "<tr><td colspan='2' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
+    const sortedKeys = Object.keys(monthlyMap).sort().reverse();
+
+    if (sortedKeys.length === 0) {
+        summaryBody.innerHTML = "<tr><td colspan='4' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
         return;
     }
 
-    sortedMonths.forEach(month => {
-        summaryBody.innerHTML += `<tr><td>${month}</td><td><strong>£${monthlyMap[month].toFixed(2)}</strong></td></tr>`;
+    sortedKeys.forEach(key => {
+        const data = monthlyMap[key];
+        summaryBody.innerHTML += `
+            <tr>
+                <td>${data.label}</td>
+                <td><strong>£${data.total.toFixed(2)}</strong></td>
+                <td style="color: var(--primary);">£${data.sales.toFixed(2)}</td>
+                <td style="color: var(--success);">£${data.donations.toFixed(2)}</td>
+            </tr>`;
     });
 }
 
