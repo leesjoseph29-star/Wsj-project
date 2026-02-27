@@ -299,7 +299,7 @@ function renderSummary() {
     entries.forEach(e => {
         if (e.completionDate) {
             const dateObj = new Date(e.completionDate);
-            // Key for chronological sorting: YYYY-MM
+            // Key for chronological sorting: YYYY-MM (e.g., 2024-05)
             const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
             const label = `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
             
@@ -318,7 +318,8 @@ function renderSummary() {
         }
     });
 
-    const sortedKeys = Object.keys(monthlyMap).sort().reverse();
+    // Sort by key (YYYY-MM) in descending order to put most recent at the top
+    const sortedKeys = Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a));
 
     if (sortedKeys.length === 0) {
         summaryBody.innerHTML = "<tr><td colspan='4' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
