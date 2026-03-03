@@ -10,6 +10,7 @@
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
             --success: #16a34a;
+            --danger: #dc2626;
             --bg: #f1f5f9;
             --card-bg: #ffffff;
             --text-main: #0f172a;
@@ -95,19 +96,37 @@
         
         tr.donation-row { background-color: #f0fdf4; }
 
+        .summary-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
         .summary-container {
-            max-width: 600px; 
+            flex: 1;
+            min-width: 320px; 
             background: var(--card-bg);
             border-radius: 10px;
             border: 1px solid var(--border);
             overflow: hidden;
         }
+
         .summary-header {
             padding: 12px 15px;
             background: #f8fafc;
             border-bottom: 1px solid var(--border);
             font-size: 14px;
             font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .payment-input-bar {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 5px;
         }
     </style>
 </head>
@@ -189,19 +208,43 @@
     </table>
 </div>
 
-<div class="summary-container">
-    <div class="summary-header">Monthly Financial Breakdown</div>
-    <table id="monthlySummaryTable">
-        <thead>
-            <tr>
-                <th>Month</th>
-                <th>Total (£)</th>
-                <th>Sales (£)</th>
-                <th>Donations (£)</th>
-            </tr>
-        </thead>
-        <tbody id="summaryBody"></tbody>
-    </table>
+<div class="summary-row">
+    <div class="summary-container">
+        <div class="summary-header">Monthly Financial Breakdown</div>
+        <table id="monthlySummaryTable">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Total (£)</th>
+                    <th>Sales (£)</th>
+                    <th>Donations (£)</th>
+                </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+        </table>
+    </div>
+
+    <div class="summary-container" style="border-left: 4px solid var(--danger);">
+        <div class="summary-header">
+            <span>Payment Log</span>
+            <span style="font-size: 12px; font-weight: 400;">Total: £<span id="paymentTotalSum">0.00</span></span>
+        </div>
+        <div class="payment-input-bar">
+            <input type="text" id="payName" placeholder="Name" style="flex: 2;">
+            <input type="number" id="payAmount" placeholder="Amount" style="flex: 1;">
+            <button onclick="addPayment()" style="background: var(--text-main);">Add</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount (£)</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="paymentBody"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
@@ -211,11 +254,13 @@ const monthLongNames = ["January","February","March","April","May","June","July"
 
 // Persistent State
 let entries = JSON.parse(localStorage.getItem("business_ledger")) || [];
+let payments = JSON.parse(localStorage.getItem("business_payments")) || [];
 let minsPerBadge = parseInt(localStorage.getItem("mins_per_badge")) || 10;
 document.getElementById("globalMins").value = minsPerBadge;
 
 function saveData() { 
     localStorage.setItem("business_ledger", JSON.stringify(entries)); 
+    localStorage.setItem("business_payments", JSON.stringify(payments));
     localStorage.setItem("mins_per_badge", minsPerBadge);
 }
 
@@ -241,15 +286,12 @@ function updateDashboard() {
     const compRev = completedEntries.reduce((s, e) => s + e.total, 0);
     const totalBadges = completedEntries.reduce((s, e) => s + (parseInt(e.badges) || 0), 0);
     
-    // Time Calculation
     const totalMinutes = entries.reduce((s, e) => s + ((parseInt(e.badges) || 0) * minsPerBadge), 0);
     const hoursTotal = totalMinutes / 60;
     const hoursDisplay = Math.floor(totalMinutes / 60);
     const minsDisplay = totalMinutes % 60;
 
-    // Hourly Rate Calculation
     const rate = hoursTotal > 0 ? (totalRev / hoursTotal) : 0;
-
     const percent = Math.min((compRev / goal) * 100, 100);
 
     document.getElementById("totalRevenue").innerText = totalRev.toFixed(2);
@@ -299,7 +341,6 @@ function renderSummary() {
     entries.forEach(e => {
         if (e.completionDate) {
             const dateObj = new Date(e.completionDate);
-            // Key for chronological sorting: YYYY-MM (e.g., 2024-05)
             const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
             const label = `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
             
@@ -309,7 +350,6 @@ function renderSummary() {
 
             const amount = e.total;
             monthlyMap[key].total += amount;
-            
             if (e.type === 'donation') {
                 monthlyMap[key].donations += amount;
             } else {
@@ -318,24 +358,62 @@ function renderSummary() {
         }
     });
 
-    // Sort by key (YYYY-MM) in descending order to put most recent at the top
     const sortedKeys = Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a));
-
     if (sortedKeys.length === 0) {
         summaryBody.innerHTML = "<tr><td colspan='4' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
-        return;
+    } else {
+        sortedKeys.forEach(key => {
+            const data = monthlyMap[key];
+            summaryBody.innerHTML += `
+                <tr>
+                    <td>${data.label}</td>
+                    <td><strong>£${data.total.toFixed(2)}</strong></td>
+                    <td style="color: var(--primary);">£${data.sales.toFixed(2)}</td>
+                    <td style="color: var(--success);">£${data.donations.toFixed(2)}</td>
+                </tr>`;
+        });
     }
+}
 
-    sortedKeys.forEach(key => {
-        const data = monthlyMap[key];
-        summaryBody.innerHTML += `
+function addPayment() {
+    const name = document.getElementById("payName").value;
+    const amount = parseFloat(document.getElementById("payAmount").value) || 0;
+    if (!name || amount <= 0) return alert("Enter a valid name and amount.");
+
+    payments.push({ name, amount });
+    saveData();
+    renderPayments();
+    document.getElementById("payName").value = "";
+    document.getElementById("payAmount").value = "";
+}
+
+function renderPayments() {
+    const body = document.getElementById("paymentBody");
+    const totalEl = document.getElementById("paymentTotalSum");
+    body.innerHTML = "";
+    let total = 0;
+
+    payments.forEach((p, index) => {
+        total += p.amount;
+        body.innerHTML += `
             <tr>
-                <td>${data.label}</td>
-                <td><strong>£${data.total.toFixed(2)}</strong></td>
-                <td style="color: var(--primary);">£${data.sales.toFixed(2)}</td>
-                <td style="color: var(--success);">£${data.donations.toFixed(2)}</td>
+                <td>${p.name}</td>
+                <td style="color: var(--danger); font-weight:600;">£${p.amount.toFixed(2)}</td>
+                <td><button class="delete-btn" onclick="deletePayment(${index})">Del</button></td>
             </tr>`;
     });
+    totalEl.innerText = total.toFixed(2);
+    if (payments.length === 0) {
+        body.innerHTML = "<tr><td colspan='3' style='text-align:center; color:var(--text-muted);'>No payments recorded</td></tr>";
+    }
+}
+
+function deletePayment(index) {
+    if(confirm("Delete this payment record?")) {
+        payments.splice(index, 1);
+        saveData();
+        renderPayments();
+    }
 }
 
 function addEntry() {
@@ -356,7 +434,7 @@ function addEntry() {
     document.getElementById("newExtra").value = "";
 }
 
-function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); updateDashboard(); renderSummary(); }
+function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); updateDashboard(); }
 function updateDate(index, value) { entries[index].completionDate = value; saveData(); renderEntries(); }
 function deleteEntry(index) { if(confirm("Delete?")) { entries.splice(index, 1); saveData(); renderEntries(); } }
 
@@ -370,6 +448,7 @@ function exportToExcel() {
 
 document.getElementById("searchInput").addEventListener("input", renderEntries);
 renderEntries();
+renderPayments();
 </script>
 </body>
 </html>
