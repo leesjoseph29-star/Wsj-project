@@ -8,7 +8,6 @@
     <style>
         :root {
             --primary: #2563eb;
-            --primary-hover: #1d4ed8;
             --success: #16a34a;
             --danger: #dc2626;
             --bg: #f1f5f9;
@@ -20,7 +19,7 @@
         }
 
         body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
             background: var(--bg); 
             color: var(--text-main);
             padding: 30px; 
@@ -28,7 +27,7 @@
         }
 
         header { margin-bottom: 24px; }
-        h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
+        h1 { font-size: 22px; font-weight: 700; margin: 0; }
 
         .dashboard { 
             display: grid; 
@@ -58,8 +57,6 @@
             border: 1px solid var(--border);
             margin-bottom: 20px;
         }
-
-        .panel h2 { font-size: 14px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 
         .input-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
@@ -97,12 +94,7 @@
         tr.donation-row { background-color: #f0fdf4; }
         .badge-cost-cell { font-weight: 600; color: var(--accent); }
 
-        .summary-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
+        .summary-row { display: flex; gap: 20px; flex-wrap: wrap; }
         .summary-container {
             flex: 1;
             min-width: 320px; 
@@ -120,44 +112,21 @@
             font-weight: 600;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
-        .payment-input-bar {
-            padding: 10px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            gap: 5px;
-        }
+        .payment-input-bar { padding: 10px; border-bottom: 1px solid var(--border); display: flex; gap: 5px; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>Management Dashboard</h1>
-</header>
+<header><h1>Management Dashboard</h1></header>
 
 <div class="dashboard">
-    <div class="card">
-        <h3>Total Revenue</h3>
-        <p>£<span id="totalRevenue">0.00</span></p>
-    </div>
-    <div class="card">
-        <h3>Total Paid</h3>
-        <p>£<span id="totalPaid">0.00</span></p>
-    </div>
-    <div class="card">
-        <h3>Badges Sewn</h3>
-        <p id="totalBadges">0</p>
-    </div>
-    <div class="card" style="border-left: 4px solid var(--primary);">
-        <h3>Total Labor</h3>
-        <p id="totalTime">0h 0m</p>
-    </div>
-    <div class="card" style="border-left: 4px solid var(--accent);">
-        <h3>Hourly Rate</h3>
-        <p>£<span id="hourlyRate">0.00</span></p>
-    </div>
+    <div class="card"><h3>Total Revenue</h3><p>£<span id="totalRevenue">0.00</span></p></div>
+    <div class="card"><h3>Total Paid</h3><p>£<span id="totalPaid">0.00</span></p></div>
+    <div class="card"><h3>Badges Sewn</h3><p id="totalBadges">0</p></div>
+    <div class="card"><h3>Total Labor</h3><p id="totalTime">0h 0m</p></div>
+    <div class="card"><h3>Hourly Rate</h3><p>£<span id="hourlyRate">0.00</span></p></div>
     <div class="card">
         <h3>Goal (£4k)</h3>
         <p><span id="percentage">0</span>%</p>
@@ -167,9 +136,9 @@
 
 <div class="panel">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 15px; padding-bottom: 8px;">
-        <h2 style="margin:0; border:none;">Add New Entry</h2>
+        <h2 style="margin:0; font-size: 14px;">Add New Entry</h2>
         <div style="font-size: 12px; color: var(--text-muted);">
-            Mins per badge: <input type="number" id="globalMins" value="10" style="width: 40px; padding: 2px 5px;" onchange="updateMinsPerBadge(this.value)">
+            Mins per badge: <input type="number" id="globalMins" value="10" style="width: 40px;" onchange="updateMinsPerBadge(this.value)">
         </div>
     </div>
     <div class="input-group">
@@ -179,20 +148,14 @@
         </select>
         <input type="text" id="newName" placeholder="Name">
         <input type="number" id="newBadges" placeholder="Qty">
-        
-        <select id="badgeUnitCost">
-            <option value="0.50">Small (£0.50)</option>
-            <option value="1.00">Standard (£1.00)</option>
-            <option value="2.00">Premium (£2.00)</option>
-        </select>
-
+        <input type="number" step="0.01" id="newBadgeCost" placeholder="Your Badge Cost (£)">
         <input type="number" step="0.01" id="newExtra" placeholder="Add. Pay (£)">
         <button onclick="addEntry()">Submit Entry</button>
     </div>
 </div>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-    <input type="text" id="searchInput" placeholder="Search entries..." style="width: 200px;">
+<div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+    <input type="text" id="searchInput" placeholder="Search..." oninput="renderEntries()">
     <button class="btn-outline" onclick="exportToExcel()">Export Excel</button>
 </div>
 
@@ -200,16 +163,7 @@
     <table>
         <thead>
             <tr>
-                <th>Type</th>
-                <th>Name</th>
-                <th>Qty</th>
-                <th>Est. Time</th>
-                <th>Badge Costs</th>
-                <th>Add. Pay</th>
-                <th>Total (£)</th>
-                <th>Paid</th>
-                <th>Completion</th>
-                <th>Action</th>
+                <th>Type</th><th>Name</th><th>Qty</th><th>Est. Time</th><th>Badge Cost</th><th>Add. Pay</th><th>Total (£)</th><th>Paid</th><th>Completion</th><th>Action</th>
             </tr>
         </thead>
         <tbody id="orderTable"></tbody>
@@ -218,24 +172,17 @@
 
 <div class="summary-row">
     <div class="summary-container">
-        <div class="summary-header">Monthly Financial Breakdown</div>
-        <table id="monthlySummaryTable">
-            <thead>
-                <tr>
-                    <th>Month</th>
-                    <th>Total (£)</th>
-                    <th>Sales (£)</th>
-                    <th>Donations (£)</th>
-                </tr>
-            </thead>
+        <div class="summary-header">Monthly Breakdown</div>
+        <table>
+            <thead><tr><th>Month</th><th>Total (£)</th><th>Sales</th><th>Donations</th></tr></thead>
             <tbody id="summaryBody"></tbody>
         </table>
     </div>
 
     <div class="summary-container" style="border-left: 4px solid var(--danger);">
         <div class="summary-header">
-            <span>WSJ payment Log</span>
-            <span style="font-size: 12px; font-weight: 400;">Total: £<span id="paymentTotalSum">0.00</span></span>
+            <span>WSJ Payment Log</span>
+            <span>Total: £<span id="paymentTotalSum">0.00</span></span>
         </div>
         <div class="payment-input-bar">
             <input type="text" id="payName" placeholder="Name" style="flex: 2;">
@@ -243,13 +190,7 @@
             <button onclick="addPayment()" style="background: var(--text-main);">Add</button>
         </div>
         <table>
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Amount (£)</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Description</th><th>Amount (£)</th><th>Action</th></tr></thead>
             <tbody id="paymentBody"></tbody>
         </table>
     </div>
@@ -270,39 +211,30 @@ function saveData() {
     localStorage.setItem("mins_per_badge", minsPerBadge);
 }
 
-function updateMinsPerBadge(val) {
-    minsPerBadge = parseInt(val) || 1;
-    saveData();
-    renderEntries();
-}
+function updateMinsPerBadge(val) { minsPerBadge = parseInt(val) || 1; saveData(); renderEntries(); }
 
 function toggleEntryType() {
-    const type = document.getElementById("entryType").value;
-    const isDonation = (type === "donation");
+    const isDonation = document.getElementById("entryType").value === "donation";
     document.getElementById("newBadges").disabled = isDonation;
-    document.getElementById("badgeUnitCost").disabled = isDonation;
-    document.getElementById("newBadges").style.backgroundColor = isDonation ? "#f1f5f9" : "white";
-    if(isDonation) document.getElementById("newBadges").value = 0;
+    document.getElementById("newBadgeCost").disabled = isDonation;
 }
 
 function updateDashboard() {
     const totalRev = entries.reduce((s, e) => s + (e.total || 0), 0);
     const totalPaid = entries.filter(e => e.paid).reduce((s, e) => s + (e.total || 0), 0);
-    const completedEntries = entries.filter(e => e.completionDate);
-    const compRev = completedEntries.reduce((s, e) => s + (e.total || 0), 0);
-    const totalBadges = completedEntries.reduce((s, e) => s + (parseInt(e.badges) || 0), 0);
+    const compEntries = entries.filter(e => e.completionDate);
+    const totalBadges = compEntries.reduce((s, e) => s + (parseInt(e.badges) || 0), 0);
     const totalMinutes = entries.reduce((s, e) => s + ((parseInt(e.badges) || 0) * minsPerBadge), 0);
-    const hoursTotal = totalMinutes / 60;
-    const rate = hoursTotal > 0 ? (totalRev / hoursTotal) : 0;
-    const percent = Math.min((compRev / goal) * 100, 100);
-
+    
     document.getElementById("totalRevenue").innerText = totalRev.toFixed(2);
     document.getElementById("totalPaid").innerText = totalPaid.toFixed(2);
     document.getElementById("totalBadges").innerText = totalBadges;
-    document.getElementById("totalTime").innerText = `${Math.floor(hoursTotal)}h ${totalMinutes % 60}m`;
-    document.getElementById("hourlyRate").innerText = rate.toFixed(2);
-    document.getElementById("percentage").innerText = percent.toFixed(1);
-    document.getElementById("progressBar").style.width = percent + "%";
+    document.getElementById("totalTime").innerText = `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m`;
+    document.getElementById("hourlyRate").innerText = (totalMinutes > 0 ? (totalRev / (totalMinutes/60)) : 0).toFixed(2);
+    
+    const p = Math.min((compEntries.reduce((s, e) => s + (e.total || 0), 0) / goal) * 100, 100);
+    document.getElementById("percentage").innerText = p.toFixed(1);
+    document.getElementById("progressBar").style.width = p + "%";
 }
 
 function renderEntries() {
@@ -310,108 +242,88 @@ function renderEntries() {
     const search = document.getElementById("searchInput").value.toLowerCase();
     table.innerHTML = "";
 
-    entries.forEach((entry, index) => {
-        if (entry.name.toLowerCase().includes(search)) {
-            const isDonation = entry.type === 'donation';
-            const badgeCostDisplay = (isDonation || !entry.badgeRevenue || entry.badgeRevenue === 0) 
-                ? '<span style="color:var(--text-muted)">N/A</span>' 
-                : '£' + entry.badgeRevenue.toFixed(2);
-            
-            const timeEst = isDonation ? 'N/A' : (entry.badges * minsPerBadge) + 'm';
-
+    entries.forEach((e, i) => {
+        if (e.name.toLowerCase().includes(search)) {
+            const isDonation = e.type === 'donation';
+            const costDisp = (isDonation || !e.badgeCostInput) ? '<span style="color:var(--text-muted)">N/A</span>' : '£' + e.badgeCostInput.toFixed(2);
             table.innerHTML += `
                 <tr class="${isDonation ? 'donation-row' : ''}">
-                    <td style="font-size:10px; color:var(--text-muted)">${entry.type.toUpperCase()}</td>
-                    <td><strong>${entry.name}</strong></td>
-                    <td>${isDonation ? '-' : entry.badges}</td>
-                    <td style="color:var(--primary); font-weight:600;">${timeEst}</td>
-                    <td class="badge-cost-cell">${badgeCostDisplay}</td>
-                    <td>£${entry.extra.toFixed(2)}</td>
-                    <td><strong>£${(entry.total || 0).toFixed(2)}</strong></td>
-                    <td><input type="checkbox" ${entry.paid ? "checked" : ""} onchange="togglePaid(${index})"></td>
-                    <td><input type="date" value="${entry.completionDate || ''}" onchange="updateDate(${index}, this.value)"></td>
-                    <td><button class="delete-btn" onclick="deleteEntry(${index})">Del</button></td>
+                    <td style="font-size:10px; color:var(--text-muted)">${e.type.toUpperCase()}</td>
+                    <td><strong>${e.name}</strong></td>
+                    <td>${isDonation ? '-' : e.badges}</td>
+                    <td>${isDonation ? 'N/A' : (e.badges * minsPerBadge) + 'm'}</td>
+                    <td class="badge-cost-cell">${costDisp}</td>
+                    <td>£${(e.extra || 0).toFixed(2)}</td>
+                    <td><strong>£${(e.total || 0).toFixed(2)}</strong></td>
+                    <td><input type="checkbox" ${e.paid ? "checked" : ""} onchange="togglePaid(${i})"></td>
+                    <td><input type="date" value="${e.completionDate || ''}" onchange="updateDate(${i}, this.value)"></td>
+                    <td><button class="delete-btn" onclick="deleteEntry(${i})">Del</button></td>
                 </tr>`;
         }
     });
-    updateDashboard();
-    renderSummary();
+    updateDashboard(); renderSummary();
 }
 
 function addEntry() {
     const type = document.getElementById("entryType").value;
     const name = document.getElementById("newName").value;
     const qty = parseInt(document.getElementById("newBadges").value) || 0;
-    const unitCost = parseFloat(document.getElementById("badgeUnitCost").value);
+    const badgeCostInput = parseFloat(document.getElementById("newBadgeCost").value) || 0;
     const extra = parseFloat(document.getElementById("newExtra").value) || 0;
 
     if (!name) return alert("Enter a name.");
-    const badgeRevenue = type === 'order' ? (qty * unitCost * 1.5) : 0;
-    const total = badgeRevenue + extra;
-
-    entries.push({ type, name, badges: qty, unitCost, badgeRevenue, extra, total, paid: false, completionDate: "" });
-    saveData();
-    renderEntries();
     
-    document.getElementById("newName").value = "";
-    document.getElementById("newBadges").value = "";
-    document.getElementById("newExtra").value = "";
+    // FORMULA: (Qty * 0.50) + (Your Cost * 1.5) + Extra
+    let total = (type === 'order') ? (qty * 0.5) + (badgeCostInput * 1.5) + extra : extra;
+
+    entries.push({ type, name, badges: qty, badgeCostInput, extra, total, paid: false, completionDate: "" });
+    saveData(); renderEntries();
+    document.getElementById("newName").value = ""; document.getElementById("newBadges").value = "";
+    document.getElementById("newBadgeCost").value = ""; document.getElementById("newExtra").value = "";
 }
 
-function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); renderEntries(); }
-function updateDate(index, value) { entries[index].completionDate = value; saveData(); renderEntries(); }
-function deleteEntry(index) { if(confirm("Delete?")) { entries.splice(index, 1); saveData(); renderEntries(); } }
+function togglePaid(i) { entries[i].paid = !entries[i].paid; saveData(); renderEntries(); }
+function updateDate(i, v) { entries[i].completionDate = v; saveData(); renderEntries(); }
+function deleteEntry(i) { if(confirm("Delete?")) { entries.splice(i, 1); saveData(); renderEntries(); } }
 
 function renderSummary() {
-    const summaryBody = document.getElementById("summaryBody");
-    summaryBody.innerHTML = "";
-    let monthlyMap = {};
-
+    const body = document.getElementById("summaryBody"); body.innerHTML = "";
+    let map = {};
     entries.forEach(e => {
         if (e.completionDate) {
-            const dateObj = new Date(e.completionDate);
-            const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-            if (!monthlyMap[key]) monthlyMap[key] = { label: `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`, total: 0, sales: 0, donations: 0 };
-            monthlyMap[key].total += e.total;
-            if (e.type === 'donation') monthlyMap[key].donations += e.total;
-            else monthlyMap[key].sales += e.total;
+            const d = new Date(e.completionDate);
+            const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (!map[k]) map[k] = { label: `${monthLongNames[d.getMonth()]} ${d.getFullYear()}`, t: 0, s: 0, d: 0 };
+            map[k].t += e.total;
+            if (e.type === 'donation') map[k].d += e.total; else map[k].s += e.total;
         }
     });
-
-    Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a)).forEach(key => {
-        const data = monthlyMap[key];
-        summaryBody.innerHTML += `<tr><td>${data.label}</td><td><strong>£${data.total.toFixed(2)}</strong></td><td style="color:var(--primary);">£${data.sales.toFixed(2)}</td><td style="color:var(--success);">£${data.donations.toFixed(2)}</td></tr>`;
+    Object.keys(map).sort().reverse().forEach(k => {
+        const item = map[k];
+        body.innerHTML += `<tr><td>${item.label}</td><td><strong>£${item.t.toFixed(2)}</strong></td><td>£${item.s.toFixed(2)}</td><td>£${item.d.toFixed(2)}</td></tr>`;
     });
 }
 
 function addPayment() {
-    const name = document.getElementById("payName").value;
-    const amount = parseFloat(document.getElementById("payAmount").value) || 0;
-    if (!name || amount <= 0) return alert("Valid name/amount required.");
-    payments.push({ name, amount });
-    saveData();
-    renderPayments();
-    document.getElementById("payName").value = "";
-    document.getElementById("payAmount").value = "";
+    const n = document.getElementById("payName").value;
+    const a = parseFloat(document.getElementById("payAmount").value) || 0;
+    if (n && a > 0) { payments.push({ name: n, amount: a }); saveData(); renderPayments(); }
+    document.getElementById("payName").value = ""; document.getElementById("payAmount").value = "";
 }
 
 function renderPayments() {
-    const body = document.getElementById("paymentBody");
-    let total = 0;
-    body.innerHTML = "";
-    payments.forEach((p, i) => {
-        total += p.amount;
-        body.innerHTML += `<tr><td>${p.name}</td><td style="color:var(--danger); font-weight:600;">£${p.amount.toFixed(2)}</td><td><button class="delete-btn" onclick="deletePayment(${i})">Del</button></td></tr>`;
+    const body = document.getElementById("paymentBody"); let t = 0; body.innerHTML = "";
+    payments.forEach((p, i) => { 
+        t += p.amount; 
+        body.innerHTML += `<tr><td>${p.name}</td><td style="color:var(--danger); font-weight:600;">£${p.amount.toFixed(2)}</td><td><button class="delete-btn" onclick="deletePayment(${i})">Del</button></td></tr>`; 
     });
-    document.getElementById("paymentTotalSum").innerText = total.toFixed(2);
+    document.getElementById("paymentTotalSum").innerText = t.toFixed(2);
 }
 
-function deletePayment(index) { payments.splice(index, 1); saveData(); renderPayments(); }
-function exportToExcel() { const ws = XLSX.utils.json_to_sheet(entries); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Logs"); XLSX.writeFile(wb, "Business_Data.xlsx"); }
+function deletePayment(i) { payments.splice(i, 1); saveData(); renderPayments(); }
+function exportToExcel() { const ws = XLSX.utils.json_to_sheet(entries); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Logs"); XLSX.writeFile(wb, "Data_Export.xlsx"); }
 
-document.getElementById("searchInput").addEventListener("input", renderEntries);
-renderEntries();
-renderPayments();
+renderEntries(); renderPayments();
 </script>
 </body>
 </html>
