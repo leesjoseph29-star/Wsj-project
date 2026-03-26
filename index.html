@@ -95,6 +95,7 @@
         td { padding: 12px 15px; border-bottom: 1px solid var(--border); font-size: 13px; }
         
         tr.donation-row { background-color: #f0fdf4; }
+        .badge-cost-cell { font-weight: 600; color: var(--accent); }
 
         .summary-row {
             display: flex;
@@ -177,8 +178,15 @@
             <option value="donation">Direct Donation</option>
         </select>
         <input type="text" id="newName" placeholder="Name">
-        <input type="number" id="newBadges" placeholder="Badges (50p)">
-        <input type="number" step="0.01" id="newExtra" placeholder="Additional Payment (£)">
+        <input type="number" id="newBadges" placeholder="Qty">
+        
+        <select id="badgeUnitCost">
+            <option value="0.50">Small (£0.50)</option>
+            <option value="1.00">Standard (£1.00)</option>
+            <option value="2.00">Premium (£2.00)</option>
+        </select>
+
+        <input type="number" step="0.01" id="newExtra" placeholder="Add. Pay (£)">
         <button onclick="addEntry()">Submit Entry</button>
     </div>
 </div>
@@ -194,9 +202,9 @@
             <tr>
                 <th>Type</th>
                 <th>Name</th>
-                <th>Badges</th>
+                <th>Qty</th>
                 <th>Est. Time</th>
-                <th>Cost</th>
+                <th>Badge Costs</th>
                 <th>Add. Pay</th>
                 <th>Total (£)</th>
                 <th>Paid</th>
@@ -249,10 +257,8 @@
 
 <script>
 const goal = 4000;
-const badgeRate = 0.50;
 const monthLongNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-// Persistent State
 let entries = JSON.parse(localStorage.getItem("business_ledger")) || [];
 let payments = JSON.parse(localStorage.getItem("business_payments")) || [];
 let minsPerBadge = parseInt(localStorage.getItem("mins_per_badge")) || 10;
@@ -272,32 +278,28 @@ function updateMinsPerBadge(val) {
 
 function toggleEntryType() {
     const type = document.getElementById("entryType").value;
-    const badgeInput = document.getElementById("newBadges");
-    badgeInput.disabled = (type === "donation");
-    badgeInput.style.backgroundColor = (type === "donation") ? "#f1f5f9" : "white";
-    if(type === "donation") badgeInput.value = 0;
+    const isDonation = (type === "donation");
+    document.getElementById("newBadges").disabled = isDonation;
+    document.getElementById("badgeUnitCost").disabled = isDonation;
+    document.getElementById("newBadges").style.backgroundColor = isDonation ? "#f1f5f9" : "white";
+    if(isDonation) document.getElementById("newBadges").value = 0;
 }
 
 function updateDashboard() {
-    const totalRev = entries.reduce((s, e) => s + e.total, 0);
-    const totalPaid = entries.filter(e => e.paid).reduce((s, e) => s + e.total, 0);
-    
+    const totalRev = entries.reduce((s, e) => s + (e.total || 0), 0);
+    const totalPaid = entries.filter(e => e.paid).reduce((s, e) => s + (e.total || 0), 0);
     const completedEntries = entries.filter(e => e.completionDate);
-    const compRev = completedEntries.reduce((s, e) => s + e.total, 0);
+    const compRev = completedEntries.reduce((s, e) => s + (e.total || 0), 0);
     const totalBadges = completedEntries.reduce((s, e) => s + (parseInt(e.badges) || 0), 0);
-    
     const totalMinutes = entries.reduce((s, e) => s + ((parseInt(e.badges) || 0) * minsPerBadge), 0);
     const hoursTotal = totalMinutes / 60;
-    const hoursDisplay = Math.floor(totalMinutes / 60);
-    const minsDisplay = totalMinutes % 60;
-
     const rate = hoursTotal > 0 ? (totalRev / hoursTotal) : 0;
     const percent = Math.min((compRev / goal) * 100, 100);
 
     document.getElementById("totalRevenue").innerText = totalRev.toFixed(2);
     document.getElementById("totalPaid").innerText = totalPaid.toFixed(2);
     document.getElementById("totalBadges").innerText = totalBadges;
-    document.getElementById("totalTime").innerText = `${hoursDisplay}h ${minsDisplay}m`;
+    document.getElementById("totalTime").innerText = `${Math.floor(hoursTotal)}h ${totalMinutes % 60}m`;
     document.getElementById("hourlyRate").innerText = rate.toFixed(2);
     document.getElementById("percentage").innerText = percent.toFixed(1);
     document.getElementById("progressBar").style.width = percent + "%";
@@ -311,18 +313,21 @@ function renderEntries() {
     entries.forEach((entry, index) => {
         if (entry.name.toLowerCase().includes(search)) {
             const isDonation = entry.type === 'donation';
-            const badgeCost = isDonation ? 0 : (entry.badges * badgeRate);
-            const timeEstimate = isDonation ? 0 : (entry.badges * minsPerBadge);
+            const badgeCostDisplay = (isDonation || !entry.badgeRevenue || entry.badgeRevenue === 0) 
+                ? '<span style="color:var(--text-muted)">N/A</span>' 
+                : '£' + entry.badgeRevenue.toFixed(2);
             
+            const timeEst = isDonation ? 'N/A' : (entry.badges * minsPerBadge) + 'm';
+
             table.innerHTML += `
                 <tr class="${isDonation ? 'donation-row' : ''}">
                     <td style="font-size:10px; color:var(--text-muted)">${entry.type.toUpperCase()}</td>
                     <td><strong>${entry.name}</strong></td>
                     <td>${isDonation ? '-' : entry.badges}</td>
-                    <td style="color:var(--primary); font-weight:600;">${isDonation ? '-' : timeEstimate + 'm'}</td>
-                    <td>${isDonation ? '-' : '£' + badgeCost.toFixed(2)}</td>
+                    <td style="color:var(--primary); font-weight:600;">${timeEst}</td>
+                    <td class="badge-cost-cell">${badgeCostDisplay}</td>
                     <td>£${entry.extra.toFixed(2)}</td>
-                    <td><strong>£${entry.total.toFixed(2)}</strong></td>
+                    <td><strong>£${(entry.total || 0).toFixed(2)}</strong></td>
                     <td><input type="checkbox" ${entry.paid ? "checked" : ""} onchange="togglePaid(${index})"></td>
                     <td><input type="date" value="${entry.completionDate || ''}" onchange="updateDate(${index}, this.value)"></td>
                     <td><button class="delete-btn" onclick="deleteEntry(${index})">Del</button></td>
@@ -333,6 +338,30 @@ function renderEntries() {
     renderSummary();
 }
 
+function addEntry() {
+    const type = document.getElementById("entryType").value;
+    const name = document.getElementById("newName").value;
+    const qty = parseInt(document.getElementById("newBadges").value) || 0;
+    const unitCost = parseFloat(document.getElementById("badgeUnitCost").value);
+    const extra = parseFloat(document.getElementById("newExtra").value) || 0;
+
+    if (!name) return alert("Enter a name.");
+    const badgeRevenue = type === 'order' ? (qty * unitCost * 1.5) : 0;
+    const total = badgeRevenue + extra;
+
+    entries.push({ type, name, badges: qty, unitCost, badgeRevenue, extra, total, paid: false, completionDate: "" });
+    saveData();
+    renderEntries();
+    
+    document.getElementById("newName").value = "";
+    document.getElementById("newBadges").value = "";
+    document.getElementById("newExtra").value = "";
+}
+
+function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); renderEntries(); }
+function updateDate(index, value) { entries[index].completionDate = value; saveData(); renderEntries(); }
+function deleteEntry(index) { if(confirm("Delete?")) { entries.splice(index, 1); saveData(); renderEntries(); } }
+
 function renderSummary() {
     const summaryBody = document.getElementById("summaryBody");
     summaryBody.innerHTML = "";
@@ -342,44 +371,23 @@ function renderSummary() {
         if (e.completionDate) {
             const dateObj = new Date(e.completionDate);
             const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-            const label = `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-            
-            if (!monthlyMap[key]) {
-                monthlyMap[key] = { label: label, total: 0, sales: 0, donations: 0 };
-            }
-
-            const amount = e.total;
-            monthlyMap[key].total += amount;
-            if (e.type === 'donation') {
-                monthlyMap[key].donations += amount;
-            } else {
-                monthlyMap[key].sales += amount;
-            }
+            if (!monthlyMap[key]) monthlyMap[key] = { label: `${monthLongNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`, total: 0, sales: 0, donations: 0 };
+            monthlyMap[key].total += e.total;
+            if (e.type === 'donation') monthlyMap[key].donations += e.total;
+            else monthlyMap[key].sales += e.total;
         }
     });
 
-    const sortedKeys = Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a));
-    if (sortedKeys.length === 0) {
-        summaryBody.innerHTML = "<tr><td colspan='4' style='color:var(--text-muted); text-align:center;'>No completions recorded</td></tr>";
-    } else {
-        sortedKeys.forEach(key => {
-            const data = monthlyMap[key];
-            summaryBody.innerHTML += `
-                <tr>
-                    <td>${data.label}</td>
-                    <td><strong>£${data.total.toFixed(2)}</strong></td>
-                    <td style="color: var(--primary);">£${data.sales.toFixed(2)}</td>
-                    <td style="color: var(--success);">£${data.donations.toFixed(2)}</td>
-                </tr>`;
-        });
-    }
+    Object.keys(monthlyMap).sort((a, b) => b.localeCompare(a)).forEach(key => {
+        const data = monthlyMap[key];
+        summaryBody.innerHTML += `<tr><td>${data.label}</td><td><strong>£${data.total.toFixed(2)}</strong></td><td style="color:var(--primary);">£${data.sales.toFixed(2)}</td><td style="color:var(--success);">£${data.donations.toFixed(2)}</td></tr>`;
+    });
 }
 
 function addPayment() {
     const name = document.getElementById("payName").value;
     const amount = parseFloat(document.getElementById("payAmount").value) || 0;
-    if (!name || amount <= 0) return alert("Enter a valid name and amount.");
-
+    if (!name || amount <= 0) return alert("Valid name/amount required.");
     payments.push({ name, amount });
     saveData();
     renderPayments();
@@ -389,62 +397,17 @@ function addPayment() {
 
 function renderPayments() {
     const body = document.getElementById("paymentBody");
-    const totalEl = document.getElementById("paymentTotalSum");
-    body.innerHTML = "";
     let total = 0;
-
-    payments.forEach((p, index) => {
+    body.innerHTML = "";
+    payments.forEach((p, i) => {
         total += p.amount;
-        body.innerHTML += `
-            <tr>
-                <td>${p.name}</td>
-                <td style="color: var(--danger); font-weight:600;">£${p.amount.toFixed(2)}</td>
-                <td><button class="delete-btn" onclick="deletePayment(${index})">Del</button></td>
-            </tr>`;
+        body.innerHTML += `<tr><td>${p.name}</td><td style="color:var(--danger); font-weight:600;">£${p.amount.toFixed(2)}</td><td><button class="delete-btn" onclick="deletePayment(${i})">Del</button></td></tr>`;
     });
-    totalEl.innerText = total.toFixed(2);
-    if (payments.length === 0) {
-        body.innerHTML = "<tr><td colspan='3' style='text-align:center; color:var(--text-muted);'>No payments recorded</td></tr>";
-    }
+    document.getElementById("paymentTotalSum").innerText = total.toFixed(2);
 }
 
-function deletePayment(index) {
-    if(confirm("Delete this payment record?")) {
-        payments.splice(index, 1);
-        saveData();
-        renderPayments();
-    }
-}
-
-function addEntry() {
-    const type = document.getElementById("entryType").value;
-    const name = document.getElementById("newName").value;
-    const badges = parseInt(document.getElementById("newBadges").value) || 0;
-    const extra = parseFloat(document.getElementById("newExtra").value) || 0;
-
-    if (!name) return alert("Enter a name.");
-    const total = type === 'donation' ? extra : (badges * badgeRate) + extra;
-
-    entries.push({ type, name, badges, extra, total, paid: false, completionDate: "" });
-    saveData();
-    renderEntries();
-    
-    document.getElementById("newName").value = "";
-    document.getElementById("newBadges").value = "";
-    document.getElementById("newExtra").value = "";
-}
-
-function togglePaid(index) { entries[index].paid = !entries[index].paid; saveData(); updateDashboard(); }
-function updateDate(index, value) { entries[index].completionDate = value; saveData(); renderEntries(); }
-function deleteEntry(index) { if(confirm("Delete?")) { entries.splice(index, 1); saveData(); renderEntries(); } }
-
-function exportToExcel() {
-    if(entries.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(entries);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Logs");
-    XLSX.writeFile(wb, "Business_Data_Export.xlsx");
-}
+function deletePayment(index) { payments.splice(index, 1); saveData(); renderPayments(); }
+function exportToExcel() { const ws = XLSX.utils.json_to_sheet(entries); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Logs"); XLSX.writeFile(wb, "Business_Data.xlsx"); }
 
 document.getElementById("searchInput").addEventListener("input", renderEntries);
 renderEntries();
